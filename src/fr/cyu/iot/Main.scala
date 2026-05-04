@@ -40,6 +40,21 @@ object Main extends TyrianZIOApp[Msg, Model]:
 
     String.format("%02d:%02d:%02d", hours, minutes, seconds)
 
+  def viewJoystick(joystick: Joystick): List[Html[Msg]] = List(
+    tr(
+      td("X"),
+      td(joystick.x.toString)
+    ),
+    tr(
+      td("Y"),
+      td(joystick.y.toString)
+    ),
+    tr(
+      td("Pressed"),
+      td(joystick.pressed.toString)
+    )
+  )
+
   def viewTMG(tmg: TMG): List[Html[Msg]] = List(
     tr(
       td("Proximity"),
@@ -116,8 +131,10 @@ object Main extends TyrianZIOApp[Msg, Model]:
           td("Heartbeat (mv)"),
           td(sensors.heartbeat.toString)
         ),
-        section("BME")
+        section("Joystick")
       )
+        ++ viewJoystick(sensors.joystick)
+        ++ List(section("BME"))
         ++ sensors.bme.fold(Nil)(viewBME)
         ++ List(section("TMG"))
         ++ sensors.tmg.fold(Nil)(viewTMG)
