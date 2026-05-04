@@ -13,6 +13,7 @@ enum Msg:
   case NetworkError(reason: String)
   case Receive(data: Sensors)
   case Disconnected(code: Int, reason: String)
+  case CheckTimeout
   case NoOp
 
 object Msg:

@@ -8,7 +8,7 @@ import tyrian.SVG.{pattern as svgPattern, *}
 import tyrian.http.Http
 import tyrian.http.Request
 import tyrian.websocket.WebSocket
-import zio.*
+import zio.{System as ZSystem, *}
 import zio.interop.catz.*
 import zio.json.*
 
@@ -22,16 +22,21 @@ object Main extends TyrianZIOApp[Msg, Model]:
 
   def update(model: Model): Msg => (Model, Cmd[Task, Msg]) =
     case Msg.SetAddress(value)          => (model.copy(address = value), Cmd.None)
-    case Msg.Connected(socket)          => (model.copy(socket = Some(socket), status = Status.Success(s"Connected to ${model.address}")), Cmd.None)
+    case Msg.Connected(socket)          => (model.copy(socket = Some(socket), lastMessage = Some(System.currentTimeMillis()), status = Status.Success(s"Connected to ${model.address}")), Cmd.None)
     case Msg.Connect                    => (model, WebSocket.connect(model.socketEndpoint)(Msg.decodeConnect))
     case Msg.NetworkError(reason)       => (model.copy(status = Status.Error(reason)), Cmd.None)
-    case Msg.Receive(data)              => (model.copy(sensors = Some(data)), Cmd.None)
-    case Msg.Disconnected(1000, _)      => (model.copy(socket = None, status = Status.Neutral("Disconnected")), Cmd.None)
-    case Msg.Disconnected(code, reason) => (model.copy(socket = None, status = Status.Error(s"Disconnected: $reason")), Cmd.None)
+    case Msg.Receive(data)              => (model.copy(lastMessage = Some(System.currentTimeMillis()), sensors = Some(data)), Cmd.None)
+    case Msg.Disconnected(1000, _)      => (model.copy(socket = None, lastMessage = None, status = Status.Neutral("Disconnected")), Cmd.None)
+    case Msg.Disconnected(code, reason) => (model.copy(socket = None, lastMessage = None, status = Status.Error(s"Disconnected: $reason")), Cmd.None)
+    case Msg.CheckTimeout               => (
+      model,
+      if model.lastMessage.exists(System.currentTimeMillis() > _ + 5_000) then Cmd.emit(Msg.Disconnected(1006, "Timeout"))
+      else Cmd.None
+    )
     case Msg.NoOp                       => (model, Cmd.None)
 
   def subscriptions(model: Model): Sub[Task, Msg] =
-    model.socket.fold(Sub.None)(_.subscribe(Msg.decodeEvent))
+    Sub.every(1.second).map(_ => Msg.CheckTimeout) |+| model.socket.fold(Sub.None)(_.subscribe(Msg.decodeEvent))
 
   def formatTime(uptime: Long): String =
     val hours = uptime / 3_600_000
@@ -179,9 +184,7 @@ object Main extends TyrianZIOApp[Msg, Model]:
               cls := "btn btn-info join-item",
               onClick(Msg.Connect)
             )(
-              if model.socket.isDefined then
-                if model.sensors.isDefined then span("Disconnect")
-                else span(cls := "swap-off loading loading-spinner")("")
+              if model.socket.isDefined && !model.sensors.isDefined then span(cls := "swap-off loading loading-spinner")("")
               else span("Connect")
             )
           ),

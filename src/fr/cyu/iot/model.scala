@@ -15,8 +15,8 @@ enum Status:
   case Success(message: String)
   case Error(reason: String)
 
-case class Model(address: String, socket: Option[WebSocket[Task]], status: Status, sensors: Option[Sensors]):
+case class Model(address: String, socket: Option[WebSocket[Task]], lastMessage: Option[Long], status: Status, sensors: Option[Sensors]):
   def socketEndpoint: String = s"ws://$address"
 
 object Model:
-  val default: Model = Model("", None, Status.Neutral("Idle"), None)
+  val default: Model = Model("", None, None, Status.Neutral("Idle"), None)
