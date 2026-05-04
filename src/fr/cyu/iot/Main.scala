@@ -147,7 +147,6 @@ object Main extends TyrianZIOApp[Msg, Model]:
     )
 
   def view(model: Model): Html[Msg] =
-    println("view")
     div(cls := "w-full h-full flex flex-col justify-start items-center gap-10 py-10")(
       h1(cls := "text-6xl font-bold text-cyan-400")("Sensors monitor"),
       div(cls := "w-5xl h-full flex flex-col justify-start items-center gap-10")(
@@ -181,9 +180,9 @@ object Main extends TyrianZIOApp[Msg, Model]:
               onClick(Msg.Connect)
             )(
               if model.socket.isDefined then
-                if model.sensors.isDefined then span("Stop polling")
+                if model.sensors.isDefined then span("Disconnect")
                 else span(cls := "swap-off loading loading-spinner")("")
-              else span("Start polling")
+              else span("Connect")
             )
           ),
           model.status match
